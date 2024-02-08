@@ -5,10 +5,10 @@ from ctdcal.parsers.parse_911xmlcon import parse_all_xmlcon
 from ctdcal.parsers.parse_911ctd import parse_all_raw
 
 # Constants etc. for development and testing
-RAWDIR = '/Users/als026/Documents/I05/latest/data/raw/'
-CALDIR = '/Users/als026/data/asmith_ctdcal/cal/'
-CFGDIR = '/Users/als026/data/asmith_ctdcal/cfg/'
-CNVDIR = '/Users/als026/data/asmith_ctdcal/cnv/'
+RAWDIR = '/Users/als026/data/rr2307/data/raw'
+CALDIR = '/Users/als026/data/rr2307/data/cal/'
+CFGDIR = '/Users/als026/data/rr2307/data/cfg/'
+CNVDIR = '/Users/als026/data/rr2307/data/cnv/'
 
 # CAST_NO = '00201'
 

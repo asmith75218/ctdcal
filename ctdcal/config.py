@@ -5,6 +5,7 @@ from importlib import resources
 
 import yaml
 
+
 with resources.open_text("ctdcal", "user_settings.yaml") as f:
     settings = yaml.safe_load(f)
 

@@ -154,7 +154,7 @@ class Parser(ParserCommon):
 
         return columns
 
-    def cnv_to_csv(self, outdir, cast_no):
+    def cnv_to_zip(self, outdir, cast_no):
         """
         Save converted data to a compressed csv file.
 
@@ -191,4 +191,4 @@ def parse_all_raw(indir, cfgdir, outdir, ext='hex'):
         parser.configure(cfgfile)
         parser.parse_raw()
         print("Saving cast %s converted data..." % cast_no)
-        parser.cnv_to_csv(outdir, cast_no)
+        parser.cnv_to_zip(outdir, cast_no)
