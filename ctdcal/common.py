@@ -6,7 +6,11 @@
 :author: Allen Smith
 :brief: Common code for use across ctdcal modules.
 """
-from munch import Munch
+import json
+
+import pandas as pd
+from munch import Munch, munchify
+
 
 class Parameters(object):
     """
@@ -28,3 +32,29 @@ class Parameters(object):
         return munch
 
 
+class SensorNotFoundError(Exception):
+    pass
+
+
+def zip_to_df(infile, cols):
+    if infile.is_file():
+        df = pd.read_csv(infile, usecols=cols)
+        return df
+    else:
+        print('File not found: %s' % str(infile))
+        return None
+
+
+def json_to_obj(infile):
+    if infile.is_file():
+        with open(infile, 'r') as f:
+            data = json.load(f)
+            return munchify(data)
+    else:
+        print('File not found: %s' % str(infile))
+        return None
+
+
+def get_list_indices(list_, value):
+    indices = [i for i, v in enumerate(list_) if v == value]
+    return indices
