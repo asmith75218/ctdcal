@@ -7,9 +7,27 @@
 :brief: Common code for use across ctdcal modules.
 """
 import json
+import yaml
+from pathlib import Path
 
 import pandas as pd
 from munch import Munch, munchify
+
+
+class User(object):
+    """
+    Stores user-defined global settings as defined here.
+    TODO pull settings from a file (i.e. user_settings.yaml)
+    """
+    def __init__(self, infile):
+        cfg = yaml_to_obj(infile)
+        # working directories
+        self.datadir = cfg.datadir
+        self.rawdir = Path(self.datadir, 'raw/')
+        self.caldir = Path(self.datadir, 'cal/')
+        self.cfgdir = Path(self.datadir, 'cfg/')
+        self.cnvdir = Path(self.datadir, 'cnv/')
+        self.procdir = Path(self.datadir, 'proc/')
 
 
 class Parameters(object):
@@ -37,6 +55,7 @@ class SensorNotFoundError(Exception):
 
 
 def zip_to_df(infile, cols):
+    infile = Path(infile)
     if infile.is_file():
         df = pd.read_csv(infile, usecols=cols)
         return df
@@ -46,9 +65,20 @@ def zip_to_df(infile, cols):
 
 
 def json_to_obj(infile):
+    infile = Path(infile)
     if infile.is_file():
         with open(infile, 'r') as f:
             data = json.load(f)
+            return munchify(data)
+    else:
+        print('File not found: %s' % str(infile))
+        return None
+
+def yaml_to_obj(infile):
+    infile = Path(infile)
+    if infile.is_file():
+        with open(infile, 'r') as f:
+            data = yaml.safe_load(f)
             return munchify(data)
     else:
         print('File not found: %s' % str(infile))

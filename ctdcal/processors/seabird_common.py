@@ -29,12 +29,12 @@ def get_sensor_keys(sensor_name, coeffs):
     return keys
 
 
-def df_raw_to_freq(raw):
+def sbe_raw_to_freq(raw):
     freq = raw / 256
     return freq
 
 
-def df_raw_to_volts(raw):
+def sbe_raw_to_volts(raw):
     volt = 5 * (1 - (raw / 4095))
     return volt
 

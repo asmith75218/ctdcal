@@ -73,7 +73,8 @@ def parse_all_xmlcon(indir, cfgdir, caldir, ext='XMLCON'):
     :param ext: str, filename extension. Defaults to XMLCON.
     :return: None
     """
-    p = Path(indir)
+    p = Path(indir, 'ctd/')
+    print("searching in %s..." % str(p))
     cast_files = [fname for fname in list(p.glob('*.%s' % ext))]
     for cast_file in cast_files:
         cast_no = cast_file.stem

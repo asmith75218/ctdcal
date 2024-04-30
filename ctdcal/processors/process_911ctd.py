@@ -7,15 +7,32 @@
 :brief: Creates a NetCDF dataset from Sea-Bird 911 CTD data as converted by CTDCAL parsers
 """
 import re
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from gsw import SP_from_C
 
-from ctdcal.common import get_list_indices
-from ctdcal.processors.common import csvzip_to_df
-from ctdcal.processors.seabird_common import sbe3_freq_to_temp, sbe9_freq_to_pres, sbe4_freq_to_cond
+from ctdcal.common import get_list_indices, User
+from ctdcal.processors.common import csvzip_to_df, json_to_obj
+from ctdcal.processors.seabird_common import sbe3_freq_to_temp, sbe9_freq_to_pres, sbe4_freq_to_cond, sbe_raw_to_freq, sbe_raw_to_volts
 
+
+class Processor(object):
+    """
+    Store calibration and configuration parameters used to process
+    a cast.
+    """
+    def __init__(self, cfgfile, calfile):
+        self.cfg = json_to_obj(cfgfile)
+        self.sensors = json_to_obj(calfile)
+        self.num_freq = 5 - int(self.cfg.cc_voltage_channels_sup)
+        self.num_volts = 8 - int(self.cfg.cc_voltage_channels_sup)
+        self.columns_f = ['freq%s' % i for i in range(self.num_freq)]
+        self.columns_v = ['v%s' % i for i in range(self.num_volts)]
+        self.columns_etc = ['systime', 'p_temp', 'nmea_lat', 'nmea_lon', 'nmea_signs_status']
+        self.columns_all = self.columns_f + self.columns_v + self.columns_etc
 
 def df_process_freq_sensors(raw_data, coeff_dict, processed_data):
     # Extract sensor names from the coeffs file
@@ -98,3 +115,49 @@ def process_nmea_latlon(raw_data):
     data['lon'] = raw_data['nmea_lon'] / 50000 * lonsign
     data['new_fix'] = (raw_data['nmea_signs_status'] & 1).astype(bool)
     return data
+
+
+def process_cast(infile):
+    user = User()
+    cast_no = infile.stem[:5]
+    cfgfile = Path(user.cfgdir, '%s_config.json' % cast_no)
+    calfile = Path(user.caldir, '%s_coeffs.json' % cast_no)
+    print("Loading cast %s converted data..." % cast_no)
+    cast = Processor(cfgfile, calfile)
+    cnv = csvzip_to_df(infile, cast.columns_all)
+    # convert raw counts to freqs
+    cnv.loc[:, cast.columns_f] = sbe_raw_to_freq(cnv[cast.columns_f])
+
+    processed_data = pd.DataFrame()
+    # Timestamps don't need processing right now, just paste 'em in...
+    processed_data['scan_datetime'] = cnv['systime']
+
+    # Process the freq sensors
+    processed_data = df_process_freq_sensors(cnv, cast.sensors, processed_data)
+
+    # Process and add columns for practical salinity
+    processed_data = process_ps(processed_data)
+
+    # Process NMEA lat/lon if present...
+    if cast.cfg.cc_has_nmea_latlon:
+        gps = process_nmea_latlon(cnv[['nmea_lat', 'nmea_lon', 'nmea_signs_status']])
+        processed_data[['lat', 'lon', 'new_fix']] = gps
+
+    return processed_data, cast_no
+
+
+def process_all_core(indir, outdir, ext='zip'):
+    """
+    Process data from engineering units into science units for all core SBE911
+    CTD sensors. Includes pressure, one or two temperature and one or two
+    conductivity as well as system time, and NMEA data if present.
+
+    :param indir: Path or path-like object. Converted cast file directory.
+    :param ext: string. File extension of converted cast files. Defaults to 'zip'.
+    :return: None
+    """
+    indir = Path(indir)
+    cast_files = [fname for fname in sorted(list(indir.glob('*_cnv.%s' % ext)))]
+    for cast_file in cast_files:
+        cast, cast_no = process_cast(cast_file)
+        outfile = Path(outdir, '%s_cnv.zip' % cast_no)

@@ -1,0 +1,16 @@
+name: scratch
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - numpy
+  - munch
+  - pandas
+  - xarray
+  - h5py
+  - h5netcdf
+  - pyyaml
+  - ipykernel
+  - gsw
+

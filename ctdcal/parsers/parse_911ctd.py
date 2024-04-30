@@ -15,6 +15,7 @@ from binascii import unhexlify
 from struct import unpack
 
 import pandas as pd
+import xarray as xr
 
 from ctdcal.parsers.common import ParserCommon, NEWLINE, NMEA_TIME_BASE
 
@@ -36,7 +37,7 @@ class Parser(ParserCommon):
         :param config_file: JSON cast configuration file
         :return: None
         """
-        s = pd.read_json(config_file, orient='index', typ='series')
+        s = pd.read_json(config_file, orient='index', typ='series', convert_dates=False)
         s['cc_sensors'] = [d['SensorID'] for d in s['cc_sensors']]
 
         # Let's add columns with the number of freq and volt channels
@@ -46,7 +47,8 @@ class Parser(ParserCommon):
 
         # Finally, let's convert as many strings to numbers as we can
         # now, so we're not stuck doing it each time later...
-        self.config = s.apply(pd.to_numeric, errors='ignore')
+        s.loc[~s.index.isin(['cc_sensors'])] = s.loc[~s.index.isin(['cc_sensors'])].apply(pd.to_numeric)
+        self.config = s
 
     def parse_raw(self):
         """
@@ -168,6 +170,24 @@ class Parser(ParserCommon):
         outfile = Path(outdir, '%s_cnv.zip' % cast_no)
         self.data.to_csv(str(outfile), compression={'method': 'zip', 'compresslevel': 1})
 
+    def cnv_to_nc(self, outdir, cast_no):
+        """
+        Export converted data to a NetCDF file.
+
+        :param outdir: path or pathlike object. Destination directory.
+        :param cast_no: string. Station and cast identifier.
+        :return: None
+        """
+        outfile = Path(outdir, '%s_cnv.nc' % cast_no)
+        # create xarray dataset from pandas dataframe
+        data = xr.Dataset.from_dataframe(self.data)
+        # set station/cast coords
+        data.coords['ssscc'] = cast_no
+        # set compression level
+        compression = {"compression": "gzip", "compression_opts": 1}
+        encoding = {dv: compression for dv in data.data_vars}
+        # export as netcdf
+        data.to_netcdf(outfile, mode='w', engine='h5netcdf', encoding=encoding)
 
 def parse_all_raw(indir, cfgdir, outdir, ext='hex'):
     """
@@ -180,7 +200,7 @@ def parse_all_raw(indir, cfgdir, outdir, ext='hex'):
     :param ext: str, filename extension. Defaults to 'hex'.
     :return: None
     """
-    p = Path(indir)
+    p = Path(indir, 'ctd')
     cast_files = [fname for fname in sorted(list(p.glob('*.%s' % ext)))]
     for cast_file in cast_files:
         cast_no = cast_file.stem
@@ -190,5 +210,10 @@ def parse_all_raw(indir, cfgdir, outdir, ext='hex'):
         parser.load_ascii()
         parser.configure(cfgfile)
         parser.parse_raw()
-        print("Saving cast %s converted data..." % cast_no)
-        parser.cnv_to_zip(outdir, cast_no)
+        # set index for netcdf dimensions
+        parser.data.index.rename('samples', inplace=True)
+        # set station/cast coords
+
+        print("Exporting cast %s converted data..." % cast_no)
+        # parser.cnv_to_zip(outdir, cast_no)
+        parser.cnv_to_nc(outdir, cast_no)
