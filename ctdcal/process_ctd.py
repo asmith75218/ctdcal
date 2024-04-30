@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy.signal as sig
 
-from . import get_ctdcal_config, io, oxy_fitting
+from . import get_ctdcal_config, proj_io, oxy_fitting
 
 cfg = get_ctdcal_config()
 log = logging.getLogger(__name__)
@@ -22,6 +22,9 @@ def cast_details(df, ssscc, log_file=None):
     First find alternating periods of pumps on and pumps off, then select the
     pumps on period with the highest pressure. Get values from the row with the
     highest pressure, and return all values to be sent to log.
+    ## AS 2024/03/21
+    ## Disabling everything except the details logging
+    ## TODO: Pare this function down, maybe move into cast_tools
 
     Parameters
     ----------
@@ -49,7 +52,9 @@ def cast_details(df, ssscc, log_file=None):
     b_lon : Longitude at bottom of cast
     b_alt : Altimeter reading at bottom of cast
     """
-    df_cast = _trim_soak_period(df)
+    # df_cast = _trim_soak_period(df)
+    # df_cast = _trim_soak_period(ssscc, df)
+    df_cast = df
 
     # TODO: call parameters from config file instead
     p_start = float(np.around(df_cast["CTDPRS"].head(1), 4))
@@ -62,7 +67,7 @@ def cast_details(df, ssscc, log_file=None):
     b_lon = float(np.around(df_cast["GPSLON"][p_max_ind], 4))
     b_alt = float(np.around(df_cast["ALT"][p_max_ind], 4))
 
-    io.write_cast_details(
+    proj_io.write_cast_details(
         ssscc,
         log_file,
         time_start,
@@ -76,12 +81,13 @@ def cast_details(df, ssscc, log_file=None):
     )
 
     # remove upcast
-    df_downcast = df_cast[:p_max_ind].copy()
+    # df_downcast = df_cast[:p_max_ind].copy()
 
-    return df_downcast
+    # return df_downcast
+    return
 
 
-def _trim_soak_period(df=None):
+def _trim_soak_period(ssscc, df=None):
     """
     1) Find pump on/off patterns
     2) Select pump_on=True group with largest pressure recording
@@ -95,14 +101,14 @@ def _trim_soak_period(df=None):
     df_cast = df_pump_on_list[np.argmax([df["CTDPRS"].max() for df in df_pump_on_list])]
     df_cast = df_cast.reset_index(drop=True)
     # next fn deals w/ edge cases, leave as is for now
-    df_cast = _find_last_soak_period(df_cast)
+    df_cast = _find_last_soak_period(df_cast, ssscc)
     start_ind = df_cast.loc[: len(df) // 4, "CTDPRS"].argmin()
     df_trimmed = df_cast[start_ind:].reset_index(drop=True).copy()
 
     return df_trimmed
 
 
-def _find_last_soak_period(df_cast, time_bin=8, P_surface=2, P_downcast=50):
+def _find_last_soak_period(df_cast, ssscc, time_bin=8, P_surface=2, P_downcast=50):
     """
     Find the soak period before the downcast starts.
 
@@ -182,6 +188,7 @@ def _find_last_soak_period(df_cast, time_bin=8, P_surface=2, P_downcast=50):
 
     # Find last soak period before starting descent to target depth
     def find_last(df_list, P_downcast):
+        last_idx = None
         for idx, df in enumerate(df_list):
             if df["CTDPRS"].max() < P_downcast:
                 # make sure it's soak, not a stop to switch to autocast (i.e. A20 2021)
@@ -189,7 +196,11 @@ def _find_last_soak_period(df_cast, time_bin=8, P_surface=2, P_downcast=50):
                 if df.max()["movement"] == "stop" and len(df) > 1:
                     last_idx = idx
             else:
-                return last_idx
+                if not last_idx:
+                    print("Whoa! Trouble finding the soak on cast %s! idx:%s" % (ssscc, idx))
+                    return idx - 1
+                else:
+                    return last_idx
         return last_idx
 
     # Trim off everything before last soak
@@ -272,6 +283,12 @@ def remove_on_deck(df, stacast, cond_startup=20.0, log_file=None):
     """
     Find and remove times when rosette is on deck.
     Optionally log average pressure at start and end of cast.
+    ## AS 2024/03/21
+    ## I don't require the trimming of on-deck times after implementing an alternate
+    ## soak and upcast trimming stage. I'm disabling that functionality, but calling
+    ## the function still anyway because it also calculates and records on-deck
+    ## pressure offsets.
+    ## TODO: Pare this down, rename it to what it actually does
 
     Parameters
     ----------
@@ -356,16 +373,20 @@ def remove_on_deck(df, stacast, cond_startup=20.0, log_file=None):
                     f"No values below {cond_startup} found for {cfg.column[f'c{n}']}"
                 )
         breakpoint()
+
+    ## AS 2024/03/21
+    ## disabling the trimming...
     # MK (3/23/20, 11am):
     # auto end calculation failed bc cond2 is still >30
     # may have to do manually or just use cond1 for station 00901
-    trimmed_df = df.iloc[start_df.index.max() : end_df.index.min()].copy()
+    # trimmed_df = df.iloc[start_df.index.max() : end_df.index.min()].copy()
 
     # Log ondeck pressures
     if log_file is not None:
-        io.write_pressure_details(stacast, log_file, start_p, end_p)
+        proj_io.write_pressure_details(stacast, log_file, start_p, end_p)
 
-    return trimmed_df
+    # return trimmed_df
+    return
 
 
 def roll_filter(df, p_col="CTDPRS", direction="down"):
@@ -478,7 +499,7 @@ def binning_df(df, p_column="CTDPRS", bin_size=2):
     )
     df_out.loc[:, p_column] = df_out["bins"].astype(float)
 
-    return df_out.groupby("bins").mean()
+    return df_out.groupby("bins").mean(numeric_only=False)
 
 
 def _fill_surface_data(df, bin_size=2):
@@ -622,8 +643,14 @@ def get_ssscc_list(fname="data/ssscc.csv"):
     Load in list of stations/casts to process.
     """
     ssscc_list = []
-    with open(fname, "r") as filename:
-        ssscc_list = [line.strip() for line in filename]
+    with open(fname, "r") as lines:
+        # ssscc_list = [line.strip() for line in filename]
+        #
+        # adding ability to comment out lines in sssscc file
+        # AS 7 Aug 2023
+        for line in lines:
+            if not line.startswith("#"):
+                ssscc_list.append(line.strip())
 
     return ssscc_list
 
@@ -702,7 +729,7 @@ def _flag_backfill_data(
     return df
 
 
-def export_ct1(df, ssscc_list):
+def export_ct1(df, params):
     """
     Export continuous CTD (i.e. time) data to data/pressure/ directory as well as
     adding quality flags and removing unneeded columns.
@@ -772,7 +799,7 @@ def export_ct1(df, ssscc_list):
     full_depth_df = pd.concat([depth_df, manual_depth_df])
     full_depth_df.drop_duplicates(subset="SSSCC", keep="first", inplace=True)
 
-    for ssscc in ssscc_list:
+    for ssscc in params.ssscc:
 
         time_data = df[df["SSSCC"] == ssscc].copy()
         time_data = pressure_sequence(time_data)
@@ -789,6 +816,45 @@ def export_ct1(df, ssscc_list):
         for col in time_data.columns:
             if col.endswith("FLAG_W"):
                 time_data[col] = time_data[col].astype(int)
+
+        ## targeted manual flagging of problem casts...
+        ## --oxygen--
+        # if ssscc == '00101':
+        #     time_data['CTDOXY_FLAG_W'] = 3
+        # if ssscc == '00701':
+        #     time_data.loc[2, 'CTDOXY_FLAG_W'] = 4
+
+        ## --salinity--
+        # if ssscc == '01401':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '02001':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '02401':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '03801':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '04601':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '05001':
+        #     time_data.loc[2, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '09301':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '01401':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '09801':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '11002':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '11201':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '12001':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '12002':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '18801':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
+        # if ssscc == '19502':
+        #     time_data.loc[1, ['CTDTMP_FLAG_W', 'CTDSAL_FLAG_W', 'CTDOXY_FLAG_W', 'CTDXMISS_FLAG_W', 'CTDFLUOR_FLAG_W']] = 6
 
         try:
             depth = full_depth_df.loc[full_depth_df["SSSCC"] == ssscc, "DEPTH"].iloc[0]

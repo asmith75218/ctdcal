@@ -27,6 +27,28 @@ BOTTLE_FIRE_COL = "btl_fire"
 BOTTLE_FIRE_NUM_COL = "btl_fire_num"
 
 
+def _get_bottle_order_from_bl_file(ssscc):
+    """
+    Helper function to get bottle firing order from the Sea Bird .bl file, which
+    is the best source when bottles have been fired non-sequentially.
+
+    :param ssscc: string - station/cast identifier
+    :return: pandas dataframe object
+    """
+    f = Path(cfg.dirs['raw'], '%s.bl' % ssscc)
+    btl_fire_order = [0]
+    btl_fire_num = [0]
+    with open(f, 'r') as bl:
+        for line in bl:
+            line = line.split(',')
+            try:
+                int(line[0])
+            except ValueError:
+                continue
+            btl_fire_order.append(int(line[0]))  # index of first bottle fired
+            btl_fire_num.append(int(line[1]))  # number of first bottle fired
+    return pd.DataFrame(btl_fire_num, index=btl_fire_order, columns=['btl_fire_num'])
+
 # Retrieve the bottle data from a converted file.
 def retrieveBottleDataFromFile(converted_file):
 
@@ -36,7 +58,15 @@ def retrieveBottleDataFromFile(converted_file):
 
 
 # Retrieve the bottle data from a dataframe created from a converted file.
-def retrieveBottleData(converted_df):
+def retrieveBottleData(converted_df, ssscc):
+    ## AS 2024/03/08
+    ## Original code can only number bottles sequentially, regardless of actual
+    ## firing order. Modified here to use order recorded in .bl file...
+    bl = _get_bottle_order_from_bl_file(ssscc)
+    # btl = converted_df.loc[converted_df[BOTTLE_FIRE_COL]]
+    # btl.loc[btl[BOTTLE_FIRE_COL]] = btl_fire_order
+    # return btl
+
     if BOTTLE_FIRE_COL in converted_df.columns:
         converted_df[BOTTLE_FIRE_NUM_COL] = (
             (
@@ -50,50 +80,65 @@ def retrieveBottleData(converted_df):
             .cumsum()
         )
         # converted_df['bottle_fire_num'] = ((converted_df[BOTTLE_FIRE_COL] == False)).astype(int).cumsum()
+
+        ## AS 2024/03/08
+        ## Use the .bl file to map sequential position (from existing code) to actual
+        ## bottle number
+        converted_df[BOTTLE_FIRE_NUM_COL] = bl.loc[converted_df[BOTTLE_FIRE_NUM_COL]].values
+
+        # cast 00701 has NaNs in the btl_fire column, this removes them. no other cast should
+        # be affected...
+        # converted_df.dropna(inplace=True, subset=[BOTTLE_FIRE_COL])
+
         return converted_df.loc[converted_df[BOTTLE_FIRE_COL]]
         # return converted_df
     else:
         log.error("Bottle fire column:", BOTTLE_FIRE_COL, "not found")
-
-    return pd.DataFrame()  # empty dataframe
-
-
-def bottle_mean(btl_df):
-    """Compute the mean for each bottle from a dataframe."""
-    btl_max = int(btl_df[BOTTLE_FIRE_NUM_COL].tail(n=1))
-    i = 1
-    output = pd.DataFrame()
-    while i <= btl_max:
-        output = pd.concat(
-            (
-                output,
-                btl_df[btl_df[BOTTLE_FIRE_NUM_COL] == i]
-                .mean()
-                .to_frame(name=i)
-                .transpose(),
-            )
-        )
-        i += 1
-    return output
+        return pd.DataFrame()  # empty dataframe
 
 
-def bottle_median(btl_df):
-    """Compute the median for each bottle from a dataframe."""
-    btl_max = int(btl_df[BOTTLE_FIRE_NUM_COL].tail(n=1))
-    i = 1
-    output = pd.DataFrame()
-    while i <= btl_max:
-        output = pd.concat(
-            (
-                output,
-                btl_df[btl_df[BOTTLE_FIRE_NUM_COL] == i]
-                .median()
-                .to_frame(name=i)
-                .transpose(),
-            )
-        )
-        i += 1
-    return output
+# def bottle_mean(btl_df):
+#     """Compute the mean for each bottle from a dataframe."""
+#     ## AS 03/13/2024
+#     ## Another place that breaks on non-sequential bottles. The "max" bottle number is not
+#     ## necessarily the last one in the btl_df. Any higher numbered bottle was not getting
+#     ## processed. This entire function (and the median function below it) can be replaced
+#     ## with a single pandas groupby() operation that will retain the correct firing order.
+#     # btl_max = int(btl_df[BOTTLE_FIRE_NUM_COL].tail(n=1))
+#     btl_max = int(btl_df[BOTTLE_FIRE_NUM_COL].max())
+#     i = 1
+#     output = pd.DataFrame()
+#     while i <= btl_max:
+#         output = pd.concat(
+#             (
+#                 output,
+#                 btl_df[btl_df[BOTTLE_FIRE_NUM_COL] == i]
+#                 .mean()
+#                 .to_frame(name=i)
+#                 .transpose(),
+#             )
+#         )
+#         i += 1
+#     return output
+#
+#
+# def bottle_median(btl_df):
+#     """Compute the median for each bottle from a dataframe."""
+#     btl_max = int(btl_df[BOTTLE_FIRE_NUM_COL].tail(n=1))
+#     i = 1
+#     output = pd.DataFrame()
+#     while i <= btl_max:
+#         output = pd.concat(
+#             (
+#                 output,
+#                 btl_df[btl_df[BOTTLE_FIRE_NUM_COL] == i]
+#                 .median()
+#                 .to_frame(name=i)
+#                 .transpose(),
+#             )
+#         )
+#         i += 1
+#     return output
 
 
 def _load_btl_data(btl_file, cols=None):
@@ -127,7 +172,8 @@ def _load_salt_data(salt_file, index_name="SAMPNO"):
     Loads salt_file to dataframe and reindexes to match bottle data dataframe
     """
     salt_data = pd.read_csv(
-        salt_file, usecols=["SAMPNO", "SALNTY", "BathTEMP", "CRavg"]
+        salt_file, usecols=["SAMPNO", "SALNTY", "BathTEMP", "CRavg"],
+        comment='#'
     )
     salt_data.set_index(index_name)
     salt_data["SSSCC_SALT"] = Path(salt_file).stem.split("_")[0]
@@ -252,14 +298,16 @@ def load_all_btl_files(ssscc_list, cols=None):
             refc_data,
             left_on="btl_fire_num",
             right_on="SAMPNO_SALT",
-            how="outer",
+            # how="outer",
+            how="left",
         )
         btl_data = pd.merge(
             btl_data,
             oxy_data,
             left_on="btl_fire_num",
             right_on="BOTTLENO_OXY",
-            how="outer",
+            # how="outer",
+            how="left",
         )
 
         if len(btl_data) > 36:
@@ -359,7 +407,8 @@ def process_reft(ssscc_list, reft_dir=cfg.dirs["reft"]):
                 log.warning(
                     "refT file for cast " + ssscc + " does not exist... skipping"
                 )
-                return
+                continue
+                # return
 
 
 def add_btlnbr_cols(df, btl_num_col):
@@ -377,6 +426,11 @@ def load_hy_file(path_to_hyfile):
 
 def export_report_data(df):
 
+    ## AS 3/10/2024
+    ## Biocasts have NaN rows causing conflict with the string slicing on the next
+    ## line. Drop them...
+    ## TODO Find where these are introduced and catch them there [Fixed now??]
+    # df.dropna(inplace=True, subset=['SSSCC'])
     df["STNNBR"] = [int(x[0:3]) for x in df["SSSCC"]]
     df["CTDPRS"] = df["CTDPRS"].round(1)
     cruise_report_cols = [
@@ -418,7 +472,7 @@ def export_report_data(df):
     df["CTDOXY_FLAG_W"] = flagging.by_percent_diff(df["CTDOXY"], df["OXYGEN"])
     df["CTDRINKO_FLAG_W"] = flagging.by_percent_diff(df["CTDRINKO"], df["OXYGEN"])
 
-    df[cruise_report_cols].to_csv("data/scratch_folder/report_data.csv", index=False)
+    df[cruise_report_cols].to_csv("data/report/report_data.csv", index=False)
 
     return
 
@@ -475,7 +529,7 @@ def export_hy1(df, out_dir=cfg.dirs["pressure"], org="ODF"):
 
     # sort by decreasing sample number (increasing pressure) and reindex
     btl_data = btl_data.sort_values(
-        by=["STNNBR", "SAMPNO"], ascending=[True, False], ignore_index=True
+        by=["STNNBR", "CASTNO", "SAMPNO"], ascending=[True, True, False], ignore_index=True
     )
 
     # switch oxygen primary sensor to rinko
@@ -500,6 +554,10 @@ def export_hy1(df, out_dir=cfg.dirs["pressure"], org="ODF"):
     btl_data["DEPTH"] = -999
     for index, row in full_depth_df.iterrows():
         btl_data.loc[btl_data["SSSCC"] == row["SSSCC"], "DEPTH"] = int(row["DEPTH"])
+
+    # ## fix spike in cast 10301 where bottle 12 was accidentally closed on deck
+    # btl_data.loc[(btl_data['SSSCC'] == '10301') & (btl_data['SAMPNO'] == 12), 'CTDSAL_FLAG_W'] = 4
+    # btl_data.loc[(btl_data['SSSCC'] == '10301') & (btl_data['SAMPNO'] == 12), 'CTDOXY_FLAG_W'] = 4
 
     # deal with nans
     # TODO: missing REFTMP not obvious til loading data - where to put this?

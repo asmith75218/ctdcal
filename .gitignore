@@ -13,6 +13,7 @@
 .project
 .pydevproject
 *.ipynb_*
+.idea
 
 # Compiled source #
 ###################
@@ -54,6 +55,7 @@ data/raw/*
 data/converted/*
 data/*
 images/*
+*.log
 
 # Documentation generated files #
 #################################

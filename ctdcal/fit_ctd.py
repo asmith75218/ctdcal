@@ -18,7 +18,7 @@ cfg = get_ctdcal_config()
 log = logging.getLogger(__name__)
 
 
-def load_fit_yaml(fname=f"{cfg.dirs['logs']}fit_coefs.yaml", to_object=False):
+def load_fit_yaml(fname=f"{cfg.dirs['logs']}{cfg.coeffs_file}", to_object=False):
     """Load polynomail fit order information from .yaml file."""
 
     with open(fname, "r") as f:
@@ -485,7 +485,7 @@ def calibrate_cond(btl_df, time_df):
     # merge in handcoded salt flags
     # TODO: make salt flagger move .csv somewhere else? or just always have it
     # somewhere else and read it from that location (e.g. in data/scratch_folder/salts)
-    salt_file = "tools/salt_flags_handcoded.csv"  # abstract to config.py
+    salt_file = "data/salt/salt_flags_handcoded.csv"  # abstract to config.py
     if Path(salt_file).exists():
         handcoded_salts = pd.read_csv(
             salt_file, dtype={"SSSCC": str, "salinity_flag": int}
