@@ -13,13 +13,16 @@ from pathlib import Path
 import pandas as pd
 from munch import Munch, munchify
 
+# Defaults
+CFGFILE = 'cfg.yaml'
+
 
 class User(object):
     """
-    Stores user-defined global settings as defined here.
-    TODO pull settings from a file (i.e. user_settings.yaml)
+    Stores user-defined global settings as defined in a user settings file.
+    The default is cfg.yaml, but can pass a custom file to override.
     """
-    def __init__(self, infile):
+    def __init__(self, infile=CFGFILE):
         cfg = yaml_to_obj(infile)
         # working directories
         self.datadir = cfg.datadir

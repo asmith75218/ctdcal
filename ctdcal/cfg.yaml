@@ -1,1 +1,36 @@
-datadir: /Users/als026/data/i08s_2024
+# Cruise settings
+expocode: "CTDCAL9999"
+section_id: "T99"
+
+# Top-level data directory:
+datadir: /Users/als026/data/pomegranate
+
+# FIT GROUPINGS
+# -------------
+#
+# Conductivity
+# - not implemented :(
+
+
+
+# Application Settings
+# ====================
+#
+# These settings do not normally need to be changed.
+
+dir:
+    ssscc: data/ssscc
+    raw: data/raw
+    converted: data/converted
+    time: data/time
+    pressure: data/pressure
+    bottle: data/bottle
+    salt: data/salt
+    reft: data/reft
+    oxygen: data/oxygen
+    logs: data/logs
+    # some proposed dirs
+    cal: data/cal
+    cfg: data/cfg
+    cnv: data/cnv
+    proc: data/proc

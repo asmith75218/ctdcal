@@ -8,17 +8,17 @@ from ctdcal.parsers.parse_911ctd import parse_all_raw
 
 # Constants etc. for development and testing
 CFGFILE = '../cfg.yaml'
-user = User(CFGFILE)
+cfg = User(CFGFILE)
 # CAST_NO = '00201'
 
 ##############################################################################
 # Parse the ctd XMLCON files...
-parse_all_xmlcon(user.rawdir, user.cfgdir, user.caldir)
+parse_all_xmlcon(cfg.dir.raw, cfg.dir.cfg, cfg.dir.cal)
 
 ##############################################################################
 # Parse the raw ctd HEX files...
 re_start = perf_counter()
-parse_all_raw(user.rawdir, user.cfgdir, user.cnvdir)
+parse_all_raw(cfg.dir.raw, cfg.dir.cfg, cfg.dir.cnv)
 re_stop = perf_counter()
 
 print('Parse time:  %f' % (re_stop - re_start))
