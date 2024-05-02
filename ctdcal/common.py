@@ -14,6 +14,7 @@ import pandas as pd
 from munch import Munch, munchify
 
 # Defaults
+BASEPATH = Path.cwd()
 CFGFILE = 'cfg.yaml'
 
 
@@ -56,6 +57,8 @@ class Parameters(object):
 class SensorNotFoundError(Exception):
     pass
 
+class ProgramIOError(Exception):
+    pass
 
 def zip_to_df(infile, cols):
     infile = Path(infile)
@@ -91,3 +94,27 @@ def yaml_to_obj(infile):
 def get_list_indices(list_, value):
     indices = [i for i, v in enumerate(list_) if v == value]
     return indices
+
+
+def makedirs(dirname):
+    """
+    Check for existence of one or more directories and make new if not present.
+
+    :param dirname: (PathLike) String or path object, absolute path of a directory.
+    :return: (boolean) True if directory exists, False if it cannot be created.
+    """
+    try:
+        p = Path(dirname)
+    except TypeError as err:
+        # not a str or PathLike object
+        raise ProgramIOError('Cannot create the directory: %s is not a string or path-like object.' % dirname) from err
+    if not p.is_absolute():
+        # not an absolute path
+        raise ProgramIOError('Cannot create the directory: %s is not an absolute path.' % dirname)
+
+    try:
+        p.mkdir(exist_ok=True)
+    except FileExistsError:
+        # dirname exists but is not a dir
+        raise ProgramIOError('Cannot create the directory: %s already exists but is not a directory.' % dirname)
+    return True
