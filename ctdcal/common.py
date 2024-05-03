@@ -9,31 +9,20 @@
 import json
 import yaml
 from pathlib import Path
+from importlib import resources
 
 import pandas as pd
 from munch import Munch, munchify
 
+import ctdcal
+
+
 # Defaults
-BASEPATH = Path.cwd()
-CFGFILE = 'cfg.yaml'
+BASEPATH = str(resources.files(ctdcal))
+CFGFILE = Path(BASEPATH, 'cfg.yaml')
 
 
-class User(object):
-    """
-    Stores user-defined global settings as defined in a user settings file.
-    The default is cfg.yaml, but can pass a custom file to override.
-    """
-    def __init__(self, infile=CFGFILE):
-        cfg = yaml_to_obj(infile)
-        # working directories
-        self.datadir = cfg.datadir
-        self.rawdir = Path(self.datadir, 'raw/')
-        self.caldir = Path(self.datadir, 'cal/')
-        self.cfgdir = Path(self.datadir, 'cfg/')
-        self.cnvdir = Path(self.datadir, 'cnv/')
-        self.procdir = Path(self.datadir, 'proc/')
-
-
+# Class definitions
 class Parameters(object):
     """
     Stores a set of parameter names and values in an easy-to-access
@@ -54,11 +43,32 @@ class Parameters(object):
         return munch
 
 
+# Program Error definitions
 class SensorNotFoundError(Exception):
     pass
 
+
 class ProgramIOError(Exception):
     pass
+
+
+# Function definitions
+def load_user_settings(infile=CFGFILE):
+    """
+    Load user-defined settings
+    :param infile: (str | PathLike) settings file, default cfg.yaml
+    :return: dict
+    """
+    try:
+        p = Path(infile)
+    except TypeError as err:
+        # not a str or PathLike object
+        raise ProgramIOError('Invalid user settings filename: %s is not a string or path-like object.' % infile) from err
+    if not p.exists():
+        # file not found
+        raise ProgramIOError('User settings file %s was not found.' % infile)
+    return yaml_to_obj(infile)
+
 
 def zip_to_df(infile, cols):
     infile = Path(infile)
@@ -80,15 +90,11 @@ def json_to_obj(infile):
         print('File not found: %s' % str(infile))
         return None
 
+
 def yaml_to_obj(infile):
-    infile = Path(infile)
-    if infile.is_file():
-        with open(infile, 'r') as f:
-            data = yaml.safe_load(f)
-            return munchify(data)
-    else:
-        print('File not found: %s' % str(infile))
-        return None
+    with open(infile, 'r') as f:
+        data = yaml.safe_load(f)
+        return munchify(data)
 
 
 def get_list_indices(list_, value):
@@ -96,25 +102,26 @@ def get_list_indices(list_, value):
     return indices
 
 
-def makedirs(dirname):
+def checkdirs(*args):
     """
     Check for existence of one or more directories and make new if not present.
 
-    :param dirname: (PathLike) String or path object, absolute path of a directory.
-    :return: (boolean) True if directory exists, False if it cannot be created.
+    :param args: (str | PathLike) One or more absolute directory paths.
+    :return: (bool) True if directory exists, False if it cannot be created.
     """
-    try:
-        p = Path(dirname)
-    except TypeError as err:
-        # not a str or PathLike object
-        raise ProgramIOError('Cannot create the directory: %s is not a string or path-like object.' % dirname) from err
-    if not p.is_absolute():
-        # not an absolute path
-        raise ProgramIOError('Cannot create the directory: %s is not an absolute path.' % dirname)
+    for dirname in args:
+        try:
+            p = Path(dirname)
+        except TypeError as err:
+            # not a str or PathLike object
+            raise ProgramIOError('Cannot create the directory: %s is not a string or path-like object.' % dirname) from err
+        if not p.is_absolute():
+            # not an absolute path
+            raise ProgramIOError('Cannot create the directory: %s is not an absolute path.' % dirname)
 
-    try:
-        p.mkdir(exist_ok=True)
-    except FileExistsError:
-        # dirname exists but is not a dir
-        raise ProgramIOError('Cannot create the directory: %s already exists but is not a directory.' % dirname)
+        try:
+            p.mkdir(exist_ok=True)
+        except FileExistsError:
+            # dirname exists but is not a dir
+            raise ProgramIOError('Cannot create the directory: %s already exists but is not a directory.' % dirname)
     return True

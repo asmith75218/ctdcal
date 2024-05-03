@@ -62,18 +62,19 @@ class Parser(ParserCommon):
             f.write(self.cal_coeffs.toJSON())
 
 
-def parse_all_xmlcon(indir, cfgdir, caldir, ext='XMLCON'):
+def parse_all_xmlcon(name, indir, cfgdir, caldir, ext='XMLCON'):
     """
     Function to parse all XMLCON files in a directory and save as individual
     JSON files with configuration settings and calibration coeffs.
 
+    :param name: (str) instrument name
     :param indir: path of input directory
     :param cfgdir: path of configuration output directory
     :param caldir: path of calibration output directory
-    :param ext: str, filename extension. Defaults to XMLCON.
+    :param ext: (str) filename extension. Defaults to XMLCON.
     :return: None
     """
-    p = Path(indir, 'ctd/')
+    p = Path(indir, name)
     print("searching in %s..." % str(p))
     cast_files = [fname for fname in list(p.glob('*.%s' % ext))]
     for cast_file in cast_files:
