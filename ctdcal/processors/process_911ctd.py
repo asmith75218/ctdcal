@@ -14,7 +14,7 @@ import pandas as pd
 import xarray as xr
 from gsw import SP_from_C
 
-from ctdcal.common import get_list_indices, User
+from ctdcal.common import get_list_indices, Settings
 from ctdcal.processors.common import csvzip_to_df, json_to_obj
 from ctdcal.processors.seabird_common import sbe3_freq_to_temp, sbe9_freq_to_pres, sbe4_freq_to_cond, sbe_raw_to_freq, sbe_raw_to_volts
 
@@ -118,7 +118,7 @@ def process_nmea_latlon(raw_data):
 
 
 def process_cast(infile):
-    user = User()
+    user = Settings()
     cast_no = infile.stem[:5]
     cfgfile = Path(user.cfgdir, '%s_config.json' % cast_no)
     calfile = Path(user.caldir, '%s_coeffs.json' % cast_no)

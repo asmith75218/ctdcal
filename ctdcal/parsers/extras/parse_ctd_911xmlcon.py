@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 :package: ctdcal.parsers.parse_911xmlcon
-:file: ctdcal/parsers/parse_911xmlcon.py
+:file: ctdcal/parsers/parse_ctd_911xmlcon.py
 :author: Allen Smith
 :brief: Parses XML configuration files for Sea-Bird 911 CTD instruments.
 """

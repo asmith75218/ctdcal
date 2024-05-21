@@ -19,18 +19,18 @@ datadir: /Users/als026/data/pomegranate
 # These settings do not normally need to be changed.
 
 dir:
-    ssscc: data/ssscc
-    raw: data/raw
-    converted: data/converted
-    time: data/time
-    pressure: data/pressure
-    bottle: data/bottle
-    salt: data/salt
-    reft: data/reft
-    oxygen: data/oxygen
-    logs: data/logs
+    ssscc: ssscc
+    raw: raw
+    converted: converted
+    time: time
+    pressure: pressure
+    bottle: bottle
+    salt: salt
+    reft: reft
+    oxygen: oxygen
+    log: log
     # some proposed dirs
-    cal: data/cal
-    cfg: data/cfg
-    cnv: data/cnv
-    proc: data/proc
+    cal: cal
+    cfg: cfg
+    cnv: cnv
+    proc: proc

@@ -1,3 +1,6 @@
 foo: 'bar'
 baz:
     x: 'spam'
+datadir: '/foo/data'
+dir:
+    bar: 'spam'

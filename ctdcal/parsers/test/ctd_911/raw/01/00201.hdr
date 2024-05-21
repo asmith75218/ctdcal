@@ -1,0 +1,31 @@
+* Sea-Bird SBE 9 Data File:
+* FileName = C:\data\TN430\raw\00201.hdr
+* Software Version Seasave V 7.26.7.107
+* Temperature SN = 6049
+* Conductivity SN = 1744
+* Number of Bytes Per Scan = 41
+* Number of Voltage Words = 4
+* Number of Scans Averaged by the Deck Unit = 1
+* Append System Time to Every Scan
+* System UpLoad Time = Mar 04 2024 04:40:18
+* NMEA Latitude = 66 51.45 S
+* NMEA Longitude = 076 42.06 E
+* NMEA UTC (Time) = Mar 04 2024  04:40:53
+* Store Lat/Lon Data = Append to Every Scan
+* SBE 11plus V 5.2
+* number of scans to average = 1
+* pressure baud rate = 9600
+* NMEA baud rate = 4800
+* GPIB address = 1
+* advance primary conductivity  0.073 seconds
+* advance secondary conductivity  0.073 seconds
+* autorun on power up is disabled
+* S>
+** Cruise: TN430
+** Cast: 00201
+** Location: 
+** Date: 
+** Water Depth: 
+** Operator: JK,SD,NN
+* System UTC = Mar 04 2024 04:40:18
+*END*

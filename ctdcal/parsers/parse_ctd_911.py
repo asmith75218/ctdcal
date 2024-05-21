@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 :package: ctdcal.parsers.parse_911ctd
-:file: ctdcal.parsers.parse_911ctd.py
+:file: ctdcal.parsers.parse_ctd_911.py
 :author: Allen Smith
 :brief: Parse raw hex files for Sea-Bird 911 CTD instruments.
 """
@@ -18,7 +18,8 @@ import pandas as pd
 import xarray as xr
 
 from ctdcal.parsers.common import ParserCommon, NEWLINE, NMEA_TIME_BASE
-
+from ctdcal.parsers.extras.parse_ctd_911xmlcon import parse_xmlcon
+from ctdcal.common import checkdirs
 
 class Parser(ParserCommon):
     """
@@ -189,22 +190,33 @@ class Parser(ParserCommon):
         # export as netcdf
         data.to_netcdf(outfile, mode='w', engine='h5netcdf', encoding=encoding)
 
-def parse_all_raw(indir, cfgdir, outdir, ext='hex'):
+def parse_all_raw(instr, indir, cfgdir, caldir, outdir, ext='hex'):
     """
-    Function to parse all hex raw data files in a directory and save as
-    compressed csv files for future processing.
+    Function to parse all hex raw data files of an instrument and save as
+    netcdf files for processing.
 
-    :param indir: path of input directory
-    :param cfgdir: path of configuration file
-    :param outdir: path of output directory
-    :param ext: str, filename extension. Defaults to 'hex'.
+    :param instr: (str) instrument name
+    :param indir: (str | PathLike) path of input directory
+    :param cfgdir: (str | PathLike) path to write configuration files
+    :param caldir: (str | PathLike) path to write calibration files
+    :param outdir: (str | PathLike) path of output directory
+    :param ext: (str) filename extension. Defaults to 'hex'.
     :return: None
     """
-    p = Path(indir, 'ctd')
+    # Configure paths...
+    paths = [Path(dirname, instr) for dirname in [cfgdir, caldir, outdir]]
+    checkdirs(*paths)
+
+    p = Path(indir, instr)
     cast_files = [fname for fname in sorted(list(p.glob('*.%s' % ext)))]
     for cast_file in cast_files:
         cast_no = cast_file.stem
-        cfgfile = Path(cfgdir, '%s_config.json' % cast_no)
+
+        # parse XMLCON file...
+        xmlcon = Path(p, '%s.XMLCON' % cast_no)
+        parse_xmlcon(xmlcon, Path(cfgdir, instr), Path(caldir, instr))
+
+        cfgfile = Path(cfgdir, instr, '%s_config.json' % cast_no)
         print("Loading cast %s raw data..." % cast_no)
         parser = Parser(cast_file)
         parser.load_ascii()
@@ -215,5 +227,5 @@ def parse_all_raw(indir, cfgdir, outdir, ext='hex'):
         # set station/cast coords
 
         print("Exporting cast %s converted data..." % cast_no)
-        # parser.cnv_to_zip(outdir, cast_no)
-        parser.cnv_to_nc(outdir, cast_no)
+        parser.cnv_to_zip(Path(outdir, instr), cast_no)
+        # parser.cnv_to_nc(outdir, cast_no)

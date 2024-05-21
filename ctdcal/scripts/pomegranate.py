@@ -1,24 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from time import perf_counter
+from pathlib import Path
 
-from ctdcal.common import User
-from ctdcal.parsers.parse_911xmlcon import parse_all_xmlcon
-from ctdcal.parsers.parse_911ctd import parse_all_raw
+from ctdcal.common import load_user_settings, BASEPATH
+from ctdcal.parsers.extras.parse_ctd_911xmlcon import parse_all_xmlcon
+from ctdcal.parsers.parse_ctd_911 import parse_all_raw
 
 # Constants etc. for development and testing
-CFGFILE = '../cfg.yaml'
-cfg = User(CFGFILE)
+CFGFILE = Path(BASEPATH, 'cfg.yaml')
+cfg = load_user_settings(CFGFILE)
+CTD = 'ctd01'
 # CAST_NO = '00201'
 
 ##############################################################################
 # Parse the ctd XMLCON files...
-parse_all_xmlcon(cfg.dir.raw, cfg.dir.cfg, cfg.dir.cal)
+# parse_all_xmlcon(cfg.dir.raw, cfg.dir.cfg, cfg.dir.cal)
 
 ##############################################################################
 # Parse the raw ctd HEX files...
 re_start = perf_counter()
-parse_all_raw(cfg.dir.raw, cfg.dir.cfg, cfg.dir.cnv)
+parse_all_raw(CTD, cfg.dir.raw, cfg.dir.cal, cfg.dir.cfg, cfg.dir.cnv)
 re_stop = perf_counter()
 
 print('Parse time:  %f' % (re_stop - re_start))

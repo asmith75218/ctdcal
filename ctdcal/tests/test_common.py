@@ -64,3 +64,4 @@ def test_load_user_settings():
     cfg = load_user_settings('common/test_cfg.yaml')
     assert cfg.foo == 'bar'
     assert cfg.baz.x == 'spam'
+    assert cfg.dir.bar == '/foo/data/spam'

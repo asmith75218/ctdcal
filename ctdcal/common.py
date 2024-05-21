@@ -6,6 +6,7 @@
 :author: Allen Smith
 :brief: Common code for use across ctdcal modules.
 """
+import logging
 import json
 import yaml
 from pathlib import Path
@@ -53,6 +54,37 @@ class ProgramIOError(Exception):
 
 
 # Function definitions
+
+def get_logger(module_name):
+    """
+    Configure logging and return the logger object.
+
+    :param module_name: (str) name of the module that is calling the logger
+    :return: logger
+    """
+    logger = logging.getLogger(module_name)
+    log_format = "%(asctime)s | %(module)s |  %(levelname)s: %(message)s"
+    formatter = logging.Formatter(log_format)
+    filter = logging.Filter('ctdcal')
+    # Configure logging to file...
+    checkdirs(cfg.dir.log)
+    file_handler = logging.FileHandler('%s/ctdcal.log' % cfg.dir.log)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+    # file_handler.addFilter(filter)
+    # Configure logging to screen...
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    stream_handler.setLevel(logging.WARNING)
+    # stream_handler.addFilter(filter)
+
+    if (logger.hasHandlers()):
+        logger.handlers.clear()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+    return logger
+
 def load_user_settings(infile=CFGFILE):
     """
     Load user-defined settings
@@ -67,7 +99,10 @@ def load_user_settings(infile=CFGFILE):
     if not p.exists():
         # file not found
         raise ProgramIOError('User settings file %s was not found.' % infile)
-    return yaml_to_obj(infile)
+    settings = yaml_to_obj(infile)
+    for d in settings.dir:
+        settings.dir[d] = str(Path(settings.datadir, settings.dir[d]))
+    return settings
 
 
 def zip_to_df(infile, cols):
@@ -120,8 +155,12 @@ def checkdirs(*args):
             raise ProgramIOError('Cannot create the directory: %s is not an absolute path.' % dirname)
 
         try:
-            p.mkdir(exist_ok=True)
+            p.mkdir(exist_ok=True, parents=True)
         except FileExistsError:
             # dirname exists but is not a dir
             raise ProgramIOError('Cannot create the directory: %s already exists but is not a directory.' % dirname)
     return True
+
+
+# Configure user settings
+cfg = load_user_settings()
