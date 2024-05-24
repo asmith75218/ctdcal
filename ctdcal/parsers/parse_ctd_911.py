@@ -6,9 +6,9 @@
 :author: Allen Smith
 :brief: Parse raw hex files for Sea-Bird 911 CTD instruments.
 """
-# TODO: replace print statements with logging
 # TODO: add missing modules to project requirements
 #
+import logging
 import re
 from pathlib import Path
 from binascii import unhexlify
@@ -20,6 +20,10 @@ import xarray as xr
 from ctdcal.parsers.common import ParserCommon, NEWLINE, NMEA_TIME_BASE
 from ctdcal.parsers.extras.parse_ctd_911xmlcon import parse_xmlcon
 from ctdcal.common import checkdirs
+
+
+logger = logging.getLogger(__name__)
+
 
 class Parser(ParserCommon):
     """
@@ -80,7 +84,7 @@ class Parser(ParserCommon):
         pattern = re.compile(pattern, re.DOTALL)
 
         data = []
-        print('Matching patterns...')
+        logger.info('Matching patterns...')
         for i, line in enumerate(self.raw):
             match = re.match(pattern, line)
             if match:
@@ -116,10 +120,10 @@ class Parser(ParserCommon):
             elif not line.startswith('*'):
                 # Line is not part of a header and does not match the
                 # pattern (likely a corrupt row)...
-                print('%s: Line %s does not match expected format.' % (self.infile, i + 1))
+                logger.info('%s: Line %s does not match expected format.' % (self.infile, i + 1))
 
         # Store results as a dataframe...
-        print('Building table...')
+        logger.info('Building table...')
         self.data = pd.DataFrame(data, columns=columns)
 
     def _configure_columns(self):
@@ -190,6 +194,7 @@ class Parser(ParserCommon):
         # export as netcdf
         data.to_netcdf(outfile, mode='w', engine='h5netcdf', encoding=encoding)
 
+
 def parse_all_raw(instr, indir, cfgdir, caldir, outdir, ext='hex'):
     """
     Function to parse all hex raw data files of an instrument and save as
@@ -217,7 +222,7 @@ def parse_all_raw(instr, indir, cfgdir, caldir, outdir, ext='hex'):
         parse_xmlcon(xmlcon, Path(cfgdir, instr), Path(caldir, instr))
 
         cfgfile = Path(cfgdir, instr, '%s_config.json' % cast_no)
-        print("Loading cast %s raw data..." % cast_no)
+        logger.info("Loading cast %s raw data..." % cast_no)
         parser = Parser(cast_file)
         parser.load_ascii()
         parser.configure(cfgfile)
@@ -226,6 +231,6 @@ def parse_all_raw(instr, indir, cfgdir, caldir, outdir, ext='hex'):
         parser.data.index.rename('samples', inplace=True)
         # set station/cast coords
 
-        print("Exporting cast %s converted data..." % cast_no)
+        logger.info("Exporting cast %s converted data..." % cast_no)
         parser.cnv_to_zip(Path(outdir, instr), cast_no)
         # parser.cnv_to_nc(outdir, cast_no)

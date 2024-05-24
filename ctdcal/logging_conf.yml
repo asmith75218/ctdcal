@@ -1,0 +1,30 @@
+version: 1
+formatters:
+  simple:
+    format: '%(name)s: %(message)s'
+  standard:
+    format: '%(asctime)s | %(name)s |  %(levelname)s: %(message)s'
+    datefmt: '%Y/%m/%m %H:%M:%S'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: simple
+    stream: ext://sys.stdout
+  file:
+    class: logging.FileHandler
+    level: INFO
+    formatter: standard
+    filename: ctdcal.log
+loggers:
+  ctdcal:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+  __main__:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+root:
+  level: WARNING
+  handlers: [console]

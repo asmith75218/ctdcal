@@ -7,11 +7,15 @@
 :brief: Parses XML configuration files for Sea-Bird 911 CTD instruments.
 """
 # TODO: Add packages to project requirements
+import logging
 from pathlib import Path
 
 from munch import Munch
 
 from ctdcal.parsers.common import ParserCommon, nested_dict_from_xml
+
+
+logger = logging.getLogger(__name__)
 
 
 class Parser(ParserCommon):
@@ -103,14 +107,14 @@ def parse_xmlcon(infile, cfgdir, caldir):
     """
     p = Path(infile)
     cast_no = p.stem
-    print("Importing cast %s configuration data..." % cast_no)
+    logger.info("Importing cast %s configuration data..." % cast_no)
     cast = Parser(p)
     cast.load_xml()
     cast.parse_xml()
     cast.parse_cal_coeffs()
 
-    print("Exporting cast %s config..." % cast_no)
+    logger.info("Exporting cast %s config..." % cast_no)
     cast.config_to_json(cfgdir, cast_no)
 
-    print("Exporting cast %s coeffs..." % cast_no)
+    logger.info("Exporting cast %s coeffs..." % cast_no)
     cast.coeffs_to_json(caldir, cast_no)

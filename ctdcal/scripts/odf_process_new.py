@@ -6,11 +6,32 @@
 :author: Allen Smith
 :brief: development script for reorg work
 """
-from ctdcal.common import get_logger
+from pathlib import Path
 
-logger = get_logger(__name__)
+from ctdcal.common import load_user_settings, configure_logging, BASEPATH
+from ctdcal.parsers.parse_ctd_911 import parse_all_raw
 
-logger.info('Started')
-logger.warning('Spam!')
 
-logger.info('Finished')
+# Constants and user settings
+CFGFILE = Path(BASEPATH, 'cfg.yaml')     # set the config file for this script
+cfg = load_user_settings(CFGFILE)
+CTD = 'ctd01'                            # name the CTD (used to create data dirs)
+
+# Configure logging
+# logger = get_logger('ctdcal')
+logger = configure_logging('ctdcal', cfg.dir.log)
+
+
+def main():
+    logger.info('----------------------------------')
+    logger.info('Starting new process...           ')
+
+    # Parse raw data files to converted files
+    # ---------------------------------------
+    parse_all_raw(CTD, cfg.dir.raw, cfg.dir.cal, cfg.dir.cfg, cfg.dir.cnv)
+
+    logger.warning('Process finished.')
+
+
+if __name__ == '__main__':
+    main()

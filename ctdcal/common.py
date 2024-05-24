@@ -7,6 +7,7 @@
 :brief: Common code for use across ctdcal modules.
 """
 import logging
+import logging.config
 import json
 import yaml
 from pathlib import Path
@@ -31,17 +32,32 @@ class Parameters(object):
     (dictionary-like) object.
     """
 
-    def __init__(self, parameters):
+    def __init__(self, parameters=None):
+        parameters = [] if parameters is None else parameters
         self.parameters = parameters
 
     def create_dict(self):
         """
-        Create a Munch class object to store parameter names.
+        Create a Bunch class object to store the parameter names for the data
+        files.
         """
-        munch = Munch()
+        bunch = Munch()
+
         for name in self.parameters:
-            munch[name] = []
-        return munch
+            bunch[name] = []
+
+        return bunch
+
+    def from_csv(self, fname):
+        """
+        Creates a list from a csv.
+        """
+        lines = []
+        with open(fname, 'r', encoding='utf8') as fid:
+            for line in fid:
+                if not line.startswith('#'):
+                    lines.append(line.strip())
+        return lines
 
 
 # Program Error definitions
@@ -63,7 +79,7 @@ def get_logger(module_name):
     :return: logger
     """
     logger = logging.getLogger(module_name)
-    log_format = "%(asctime)s | %(module)s |  %(levelname)s: %(message)s"
+    log_format = "%(asctime)s | %(name)s |  %(levelname)s: %(message)s"
     formatter = logging.Formatter(log_format)
     filter = logging.Filter('ctdcal')
     # Configure logging to file...
@@ -74,8 +90,8 @@ def get_logger(module_name):
     # file_handler.addFilter(filter)
     # Configure logging to screen...
     stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.WARNING)
+    stream_handler.setFormatter(logging.Formatter('%(message)s'))
+    stream_handler.setLevel(logging.INFO)
     # stream_handler.addFilter(filter)
 
     if (logger.hasHandlers()):
@@ -83,6 +99,13 @@ def get_logger(module_name):
     logger.setLevel(logging.INFO)
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
+    return logger
+
+def configure_logging(module_name, log_dir):
+    logging_conf = yaml_to_obj(Path(BASEPATH, 'logging_conf.yml'))
+    logging_conf.handlers.file.filename = Path(log_dir, logging_conf.handlers.file.filename)
+    logging.config.dictConfig(logging_conf)
+    logger = logging.getLogger(module_name)
     return logger
 
 def load_user_settings(infile=CFGFILE):
