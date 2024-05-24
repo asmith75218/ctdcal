@@ -84,7 +84,7 @@ class Parser(ParserCommon):
         pattern = re.compile(pattern, re.DOTALL)
 
         data = []
-        logger.info('Matching patterns...')
+        logger.debug('Matching patterns...')
         for i, line in enumerate(self.raw):
             match = re.match(pattern, line)
             if match:
@@ -120,10 +120,10 @@ class Parser(ParserCommon):
             elif not line.startswith('*'):
                 # Line is not part of a header and does not match the
                 # pattern (likely a corrupt row)...
-                logger.info('%s: Line %s does not match expected format.' % (self.infile, i + 1))
+                logger.warning('%s: Line %s does not match expected format.' % (self.infile, i + 1))
 
         # Store results as a dataframe...
-        logger.info('Building table...')
+        logger.debug('Building table...')
         self.data = pd.DataFrame(data, columns=columns)
 
     def _configure_columns(self):
@@ -216,13 +216,14 @@ def parse_all_raw(instr, indir, cfgdir, caldir, outdir, ext='hex'):
     cast_files = [fname for fname in sorted(list(p.glob('*.%s' % ext)))]
     for cast_file in cast_files:
         cast_no = cast_file.stem
+        logger.info('Parsing cast %s' % cast_no)
 
         # parse XMLCON file...
         xmlcon = Path(p, '%s.XMLCON' % cast_no)
         parse_xmlcon(xmlcon, Path(cfgdir, instr), Path(caldir, instr))
 
         cfgfile = Path(cfgdir, instr, '%s_config.json' % cast_no)
-        logger.info("Loading cast %s raw data..." % cast_no)
+        logger.debug("Loading cast %s raw data..." % cast_no)
         parser = Parser(cast_file)
         parser.load_ascii()
         parser.configure(cfgfile)
@@ -231,6 +232,6 @@ def parse_all_raw(instr, indir, cfgdir, caldir, outdir, ext='hex'):
         parser.data.index.rename('samples', inplace=True)
         # set station/cast coords
 
-        logger.info("Exporting cast %s converted data..." % cast_no)
+        logger.debug("Exporting cast %s converted data..." % cast_no)
         parser.cnv_to_zip(Path(outdir, instr), cast_no)
         # parser.cnv_to_nc(outdir, cast_no)

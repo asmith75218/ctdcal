@@ -184,6 +184,16 @@ def checkdirs(*args):
             raise ProgramIOError('Cannot create the directory: %s already exists but is not a directory.' % dirname)
     return True
 
+def check_fileexists(*fnames):
+    for fname in fnames:
+        try:
+            p = Path(fname)
+        except TypeError as err:
+            # not a str or PathLike object
+            raise ProgramIOError('Cannot create the file: %s is not a string or path-like object.' % fname) from err
+        if not p.exists():
+            p.touch()
+    return False
 
 # Configure user settings
 cfg = load_user_settings()

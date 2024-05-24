@@ -107,14 +107,14 @@ def parse_xmlcon(infile, cfgdir, caldir):
     """
     p = Path(infile)
     cast_no = p.stem
-    logger.info("Importing cast %s configuration data..." % cast_no)
+    logger.debug("Importing cast %s configuration data..." % cast_no)
     cast = Parser(p)
     cast.load_xml()
     cast.parse_xml()
     cast.parse_cal_coeffs()
 
-    logger.info("Exporting cast %s config..." % cast_no)
+    logger.debug("Exporting cast %s config..." % cast_no)
     cast.config_to_json(cfgdir, cast_no)
 
-    logger.info("Exporting cast %s coeffs..." % cast_no)
+    logger.debug("Exporting cast %s coeffs..." % cast_no)
     cast.coeffs_to_json(caldir, cast_no)

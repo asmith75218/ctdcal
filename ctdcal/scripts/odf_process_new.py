@@ -24,13 +24,16 @@ logger = configure_logging('ctdcal', cfg.dir.log)
 
 def main():
     logger.info('----------------------------------')
-    logger.info('Starting new process...           ')
+    logger.info('Starting new process              ')
 
     # Parse raw data files to converted files
     # ---------------------------------------
+    logger.info('Starting parsers...')
+    # parse CTD...
     parse_all_raw(CTD, cfg.dir.raw, cfg.dir.cal, cfg.dir.cfg, cfg.dir.cnv)
 
-    logger.warning('Process finished.')
+
+    logger.info('Process finished.')
 
 
 if __name__ == '__main__':
