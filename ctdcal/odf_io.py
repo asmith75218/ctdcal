@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+:package: ctdcal.parsers.parse_salt_odf
+:file: ctdcal/parsers/parse_salt_odf.py
+:author: Allen Smith
+:brief: Prepare raw ODF Autosal data files for processing
+"""
+# TODO Separate processing out from parsing into new processing module
 import csv
 import io
 import logging
@@ -7,17 +16,17 @@ import gsw
 import numpy as np
 import pandas as pd
 
-from . import get_ctdcal_config
+from ctdcal.common import BASEPATH, check_fileexists, checkdirs
 
-cfg = get_ctdcal_config()
-log = logging.getLogger(__name__)
+FLAGFILE = Path(BASEPATH, 'flags_manual_salt.csv')
 
+logger = logging.getLogger(__name__)
 
-def _salt_loader(filename, flag_file="tools/salt_flags_handcoded.csv"):
+def _salt_loader(filename, flag_file=FLAGFILE):
     """
     Load raw file into salt and reference DataFrames.
     """
-
+    check_fileexists(flag_file)
     csv_opts = dict(delimiter=" ", quoting=csv.QUOTE_NONE, skipinitialspace="True")
     if isinstance(filename, (str, Path)):
         with open(filename, newline="") as f:
@@ -62,7 +71,7 @@ def _salt_loader(filename, flag_file="tools/salt_flags_handcoded.csv"):
     # check for commented out lines
     commented = saltDF["STNNBR"].str.startswith(("#", "x"))
     if commented.any():
-        log.debug(f"Found comment character (#, x) in {ssscc} salt file, ignoring line")
+        logger.debug(f"Found comment character (#, x) in {ssscc} salt file, ignoring line")
         saltDF = saltDF[~commented]
 
     # check end time for * and code questionable
@@ -71,7 +80,7 @@ def _salt_loader(filename, flag_file="tools/salt_flags_handcoded.csv"):
     flagged = saltDF["EndTime"].str.contains("*", regex=False)
     if flagged.any():
         # remove asterisks from EndTime and flag samples
-        log.debug(f"Found * in {ssscc} salt file, flagging value(s) as questionable")
+        logger.debug(f"Found * in {ssscc} salt file, flagging value(s) as questionable")
         saltDF["EndTime"] = saltDF["EndTime"].str.strip("*")
         questionable = pd.DataFrame()
         questionable["SAMPNO"] = saltDF.loc[flagged, "SAMPNO"].astype(int)
@@ -98,7 +107,7 @@ def remove_autosal_drift(saltDF, refDF):
     """Calculate linear CR drift between reference values"""
     if refDF.shape != (2, 2):
         ssscc = f"{saltDF['STNNBR'].unique()[0]:03d}{saltDF['CASTNO'].unique()[0]:02d}"
-        log.warning(
+        logger.warning(
             f"Failed to find start/end reference readings for {ssscc}, check salt file"
         )
     else:
@@ -114,9 +123,7 @@ def remove_autosal_drift(saltDF, refDF):
     return saltDF.drop(labels="IndexTime", axis="columns")
 
 
-def _salt_exporter(
-    saltDF, outdir=cfg.dirs["salt"], stn_col="STNNBR", cast_col="CASTNO"
-):
+def _salt_exporter(saltDF, outdir, stn_col="STNNBR", cast_col="CASTNO"):
     """
     Export salt DataFrame to .csv file. Extra logic is included in the event that
     multiple stations and/or casts are included in a single raw salt file.
@@ -130,36 +137,36 @@ def _salt_exporter(
             stn_cast_salts.dropna(axis=1, how="all", inplace=True)  # drop empty columns
             outfile = Path(outdir) / f"{station:03.0f}{cast:02.0f}_salts.csv"  # SSSCC_*
             if outfile.exists():
-                log.info(str(outfile) + " already exists...skipping")
+                logger.debug(str(outfile) + " already exists...skipping")
                 continue
             stn_cast_salts.to_csv(outfile, index=False)
 
 
-def process_salts(ssscc_list, salt_dir=cfg.dirs["salt"]):
+def parse_all_salts(indir, outdir):
     """
-    Master salt processing function. Load in salt files for given station/cast list,
-    calculate salinity, and export to .csv files.
+    Parse all salt files in a given directory into csv files for processing.
 
-    Parameters
-    ----------
-    ssscc_list : list of str
-        List of stations to process
-    salt_dir : str, optional
-        Path to folder containing raw salt files (defaults to data/salt/)
-
+    :param indir: (str or path-like) input directory
+    :param outdir: (str or path-like) output directory
     """
-    for ssscc in ssscc_list:
-        if (Path(salt_dir) / f"{ssscc}_salts.csv").exists():
-            log.info(f"{ssscc}_salts.csv already exists in {salt_dir}... skipping")
+    indir = Path(indir)
+    outdir = Path(outdir)
+    checkdirs(indir, outdir)
+    salt_files = [f for f in indir.iterdir() if f.suffix == '' and f.is_file()]
+
+    for salt_file in salt_files:
+        ssscc = salt_file.stem
+        if (outdir / f"{ssscc}_salts.csv").exists():
+            logger.debug(f"{ssscc}_salts.csv already exists in {outdir.name}... skipping")
             continue
         else:
             try:
-                saltDF, refDF = _salt_loader(Path(salt_dir) / ssscc)
+                saltDF, refDF = _salt_loader(Path(indir) / ssscc)
             except FileNotFoundError:
-                log.warning(f"Salt file for cast {ssscc} does not exist... skipping")
+                logger.warning(f"Salt file for cast {ssscc} does not exist... skipping")
                 continue
             saltDF = remove_autosal_drift(saltDF, refDF)
             saltDF["SALNTY"] = gsw.SP_salinometer(
                 (saltDF["CRavg"] / 2.0), saltDF["BathTEMP"]
             )  # .round(4)
-            _salt_exporter(saltDF, salt_dir)
+            _salt_exporter(saltDF, outdir)
