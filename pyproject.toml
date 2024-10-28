@@ -89,15 +89,9 @@ line-ending = "lf"
 quote-style = "preserve"
 
 [tool.ruff.lint]
+select = ["E", "F", "W1", "W292", "N"]
 ignore = [
-    "E203",
     "E266",
-    # workaround for jupytext pypercent cell comments
-    "E302",
-    # line too long, handled with black
-    "E501",
-    "W503",
-    "F403"
 ]
 
 [tool.mypy]
