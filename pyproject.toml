@@ -46,11 +46,9 @@ license = { file = "LICENSE.md" }
 
 [project.optional-dependencies]
 dev = [
-    "black",
-    "flake8",
-    "isort",
     "pre-commit",
-    "pytest"
+    "pytest",
+    "ruff"
 ]
 docs = [
     "Sphinx==7.3.3",
