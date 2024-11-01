@@ -73,6 +73,9 @@ Documentation = "https://ctdcal.readthedocs.io/en/latest/"
 [project.scripts]
 ctdcal = "ctdcal.__main__:cli"
 
+[tool.setuptools.packages.find]
+include = ["/ctdcal*"]
+
 [tool.setuptools_scm]
 version_file = "ctdcal/_version.py"
 version_file_template = 'version = "{version}"'
