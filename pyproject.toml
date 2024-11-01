@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "ctdcal"
@@ -40,7 +40,7 @@ dependencies = [
     "requests",
     "scipy"
 ]
-requires-python = ">=3.10"
+requires-python = "==3.11"
 readme = "README.md"
 license = { file = "LICENSE.md" }
 
@@ -73,12 +73,20 @@ Documentation = "https://ctdcal.readthedocs.io/en/latest/"
 [project.scripts]
 ctdcal = "ctdcal.__main__:cli"
 
-[tool.setuptools.packages.find]
+[tool.hatch.build.targets.sdist]
 include = ["/ctdcal*"]
+exclude = ["tests*"]
 
-[tool.setuptools_scm]
-version_file = "ctdcal/_version.py"
-version_file_template = 'version = "{version}"'
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "ctdcal/_version.py"
+template = 'version = "{version}"'
+
+#[tool.setuptools_scm]
+#version_file = "ctdcal/_version.py"
+#version_file_template = 'version = "{version}"'
 
 [tool.ruff]
 target-version = "py310"
