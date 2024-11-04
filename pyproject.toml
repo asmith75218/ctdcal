@@ -40,7 +40,11 @@ dependencies = [
     "requests",
     "scipy"
 ]
+<<<<<<< HEAD
 requires-python = ">=3.8, <=3.11"
+=======
+requires-python = "==3.11"
+>>>>>>> 6c5b7b13decb001499af18faf8c00c7c28571b8f
 readme = "README.md"
 license = { file = "LICENSE.md" }
 
