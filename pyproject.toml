@@ -30,17 +30,17 @@ classifiers = [
 ]
 dependencies = [
     "bokeh",
-    "click",
+    "click==8.0.1",
     "gsw",
     "matplotlib",
     "munch",
-    "numpy",
+    "numpy < 2.0.0",
     "pandas",
     "PyYAML",
     "requests",
     "scipy"
 ]
-requires-python = ">=3.8,<=3.11"
+requires-python = ">=3.8,<3.12"
 readme = "README.md"
 license = { file = "LICENSE.md" }
 
