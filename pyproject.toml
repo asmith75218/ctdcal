@@ -87,10 +87,6 @@ local_scheme = "no-local-version"
 version-file = "ctdcal/_version.py"
 template = 'version = "{version}"'
 
-#[tool.setuptools_scm]
-#version_file = "ctdcal/_version.py"
-#version_file_template = 'version = "{version}"'
-
 [tool.ruff]
 target-version = "py310"
 
